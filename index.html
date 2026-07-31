@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI英語多読＆リスニング・リーダー</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-color: #1e293b;
+            --border-color: #e2e8f0;
+        }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.7;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        h1 {
+            font-size: 1.5rem;
+            color: var(--primary);
+            margin-top: 0;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .settings-box, .control-box {
+            background: #f1f5f9;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 12px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+        input[type="text"], input[type="password"], select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 0.95rem;
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+        }
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+        button.secondary {
+            background-color: #64748b;
+        }
+        button.secondary:hover {
+            background-color: #475569;
+        }
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        #story-area {
+            margin-top: 25px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background: #ffffff;
+            min-height: 150px;
+            font-size: 1.15rem;
+            white-space: pre-wrap;
+            position: relative;
+        }
+        /* 翻訳ポップアップツールチップ */
+        #tooltip {
+            position: absolute;
+            background: #1e293b;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.2);
+            max-width: 250px;
+            pointer-events: none;
+        }
+        #tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1e293b transparent transparent transparent;
+        }
+        .loading {
+            text-align: center;
+            color: #64748b;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📚 AI 英語多読リーダー（Graded Readers準拠）</h1>
+
+    <!-- APIキー設定エリア -->
+    <div class="settings-box">
+        <div class="form-group">
+            <label for="apiKey">Gemini API Key (<a href="https://aistudio.google.com/app/apikey" target="_blank">取得はこちら</a>):</label>
+            <input type="password" id="apiKey" placeholder="AIzaSy...">
+        </div>
+    </div>
+
+    <!-- ストーリー生成コントロール -->
+    <div class="control-box">
+        <div class="form-group">
+            <label for="levelSelect">リーダーズ・レベル（語彙数・難易度）:</label>
+            <select id="levelSelect">
+                <option value="Stage 1 (Starter / Elementary): Around 400 headwords. Use only simple present/past tense, short sentences, and basic daily vocabulary.">Stage 1 (Starter / 語彙数約400語) - 超初心者向け・ごくシンプルな現在形・過去形</option>
+                <option value="Stage 2 (Beginner): Around 700 headwords. Simple sentence structures, basic conjunctions, common everyday words." selected>Stage 2 (Beginner / 語彙数約700語) - 初級向け・基本的な接続詞と日常語</option>
+                <option value="Stage 3 (Pre-Intermediate): Around 1000 headwords. Introduction of past continuous, simple future, and slightly broader vocabulary.">Stage 3 (Pre-Intermediate / 語彙数約1000語) - 中級手前・少し表現が広がるレベル</option>
+                <option value="Stage 4 (Intermediate): Around 1400 headwords. More complex sentence structures, idioms, and varied descriptive language.">Stage 4 (Intermediate / 語彙数約1400語) - 中級向け・複文やイディオムを含む自然な表現</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="topicInput">ストーリーのテーマ・ジャンル（自由記入可）:</label>
+            <input type="text" id="topicInput" value="A mysterious train journey in London" placeholder="例: A ghost in an old hotel, A lost dog in New York">
+        </div>
+        <button id="generateBtn">✨ 新しい多読ストーリーを生成する</button>
+    </div>
+
+    <!-- 読書・再生エリア -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+        <h3 style="margin:0; font-size: 1.1rem;">📖 ストーリー本文（単語をドラッグすると簡易訳が出ます）</h3>
+    </div>
+    
+    <div id="story-area" class="story-content">
+        ここにAIが生成した英文が表示されます。上のボタンを押してストーリーを作成してください。
+    </div>
+
+    <div class="button-group" style="margin-top: 15px;">
+        <button id="speakBtn" class="secondary" disabled>🔊 音声読み上げ (Play)</button>
+        <button id="stopBtn" class="secondary" disabled>⏹️ 停止 (Stop)</button>
+    </div>
+</div>
+
+<!-- 翻訳ポップアップ -->
+<div id="tooltip"></div>
+
+<script>
+    const apiKeyInput = document.getElementById('apiKey');
+    const levelSelect = document.getElementById('levelSelect');
+    const topicInput = document.getElementById('topicInput');
+    const generateBtn = document.getElementById('generateBtn');
+    const storyArea = document.getElementById('story-area');
+    const speakBtn = document.getElementById('speakBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const tooltip = document.getElementById('tooltip');
+
+    // 保存されたAPIキーを復元
+    if (localStorage.getItem('gemini_api_key')) {
+        apiKeyInput.value = localStorage.getItem('gemini_api_key');
+    }
+
+    apiKeyInput.addEventListener('input', () => {
+        localStorage.setItem('gemini_api_key', apiKeyInput.value.trim());
+    });
+
+    // 1. Gemini API (gemini-3.5-flash-lite) を使ったストーリー自動生成
+    generateBtn.addEventListener('click', async () => {
+        const apiKey = apiKeyInput.value.trim();
+        if (!apiKey) {
+            alert('有効なGemini APIキーを入力してください。');
+            return;
+        }
+
+        const levelConstraint = levelSelect.value;
+        const topic = topicInput.value;
+
+        storyArea.innerHTML = '<div class="loading">AI (gemini-3.5-flash-lite) が多読用の英文を執筆中...しばらくお待ちください...</div>';
+        generateBtn.disabled = true;
+
+        const prompt = `You are an expert graded reader author (similar to Oxford Bookworms or Penguin Readers). 
+Write a short reading passage for extensive reading (tadoku) based on the following strict criteria:
+- Vocabulary/Grammar Level: ${levelConstraint}
+- Theme/Topic: ${topic}
+- Length: Around 150 to 200 words.
+- Rule: Do not include Japanese translations, headings, or markdown code blocks in the output. Just output the English story text directly, strictly respecting the vocabulary limits of the chosen level.`;
+
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            });
+
+            const data = await response.json();
+            if (data.error) {
+                throw new Error(data.error.message);
+            }
+
+            const storyText = data.candidates[0].content.parts[0].text.trim();
+            storyArea.textContent = storyText;
+            speakBtn.disabled = false;
+            stopBtn.disabled = false;
+        } catch (error) {
+            storyArea.innerHTML = `<span style="color: red;">エラーが発生しました: ${error.message}</span>`;
+        } finally {
+            generateBtn.disabled = false;
+        }
+    });
+
+    // 2. ブラウザ標準機能による音声読み上げ (Web Speech API)
+    let currentUtterance = null;
+
+    speakBtn.addEventListener('click', () => {
+        const text = storyArea.textContent;
+        if (!text || text.includes('ここにAIが生成した')) return;
+
+        window.speechSynthesis.cancel(); // 既存の音声を停止
+        currentUtterance = new SpeechSynthesisUtterance(text);
+        currentUtterance.lang = 'en-US'; // 英語発音
+        currentUtterance.rate = 0.9; // 多読用に少しゆっくり（0.9倍速）
+
+        window.speechSynthesis.speak(currentUtterance);
+    });
+
+    stopBtn.addEventListener('click', () => {
+        window.speechSynthesis.cancel();
+    });
+
+    // 3. 選択した単語の簡易翻訳機能（MyMemory翻訳APIを利用）
+    storyArea.addEventListener('mouseup', async (e) => {
+        const selection = window.getSelection();
+        const selectedText = selection.toString().trim();
+
+        if (selectedText.length > 0 && selectedText.length < 30) {
+            tooltip.style.display = 'block';
+            tooltip.style.left = `${e.pageX}px`;
+            tooltip.style.top = `${e.pageY - 45}px`;
+            tooltip.textContent = `"${selectedText}" を翻訳中...`;
+
+            try {
+                const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(selectedText)}&langpair=en|ja`);
+                const data = await res.json();
+                if (data && data.responseData) {
+                    tooltip.textContent = `${selectedText} : ${data.responseData.translatedText}`;
+                } else {
+                    tooltip.textContent = '翻訳が見つかりませんでした';
+                }
+            } catch (err) {
+                tooltip.textContent = '翻訳エラー';
+            }
+        }
+    });
+
+    // 画面のどこかをクリックしたらポップアップを消す
+    document.addEventListener('mousedown', (e) => {
+        if (!tooltip.contains(e.target) && e.target !== storyArea) {
+            tooltip.style.display = 'none';
+        }
+    });
+</script>
+
+</body>
+</html>
